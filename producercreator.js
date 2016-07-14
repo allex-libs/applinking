@@ -17,6 +17,9 @@ function createProduceLink (execlib, applinkinglib) {
   function isPropertyTarget(desc) {
     return desc && desc.target && desc.target.indexOf(':') > 0;
   }
+  function isFunctionTarget(desc) {
+    return desc && desc.target && desc.target.indexOf('>') > 0;
+  }
   // checkers end
 
   //parsers
@@ -42,7 +45,7 @@ function createProduceLink (execlib, applinkinglib) {
           console.error('source could not be found from', sa[0]);
         }
         if (!t) {
-          console.error('target could not be found from', ta[0]);
+          console.error('target could not be found from', ta[0], 'on', eb);
         }
       }
     }
@@ -68,6 +71,22 @@ function createProduceLink (execlib, applinkinglib) {
       if (ehctor) {
         eh = new ehctor(pes.s, pes.sr);
         fh = new FilterHandler(desc.filter, pes.t.set.bind(pes.t, pes.tr));
+        addLink(eb, desc.name, new LinkingResult([eh.listenToEvent(fh.processInput.bind(fh)), eh, fh]), pes);
+      }
+    }
+  }
+  function produceEvent2FunctionLink (eb, desc) {
+    var pes = parsedEventString(eb, desc, '!', '>'), fh, ehctor, eh, func;
+    if (pes) {
+      func = pes.t[pes.tr];
+      if (!lib.isFunction(func)) {
+        console.error(pes.tr, 'is not a method of', pes.t);
+        return;
+      }
+      ehctor = applinkinglib.EventEmitterHandlingRegistry.resolve({emitter:pes.s, name:pes.sr});
+      if (ehctor) {
+        eh = new ehctor(pes.s, pes.sr);
+        fh = new FilterHandler(desc.filter, func.bind(pes.t));
         addLink(eb, desc.name, new LinkingResult([eh.listenToEvent(fh.processInput.bind(fh)), eh, fh]), pes);
       }
     }
@@ -104,6 +123,10 @@ function createProduceLink (execlib, applinkinglib) {
       }
       if (isEventTarget(desc)) {
         produceEvent2EventLink(eb, desc);
+        return;
+      }
+      if (isFunctionTarget(desc)) {
+        produceEvent2FunctionLink(eb, desc);
       }
     }
     if (isPropertySource(desc)) {
@@ -113,6 +136,10 @@ function createProduceLink (execlib, applinkinglib) {
       }
       if (isEventTarget(desc)) {
         produceProperty2EventLink(eb, desc);
+        return;
+      }
+      if (isFunctionTarget(desc)) {
+        produceProperty2FunctionLink(eb, desc);
       }
     }
   }
