@@ -1,9 +1,8 @@
-function createProduceLink (execlib) {
+function createProduceLink (execlib, applinkinglib) {
   'use strict';
 
   var lib = execlib.lib,
-    eventEmitterHandling = require('./eventemitterhandlingcreator')(execlib);
-
+    FilterHandler = require('./filterhandlercreator')(execlib);
 
   // checkers
   function isEventSource(desc) {
@@ -51,18 +50,33 @@ function createProduceLink (execlib) {
   }
   //parsers end
 
+  function LinkingResult(destroyables) {
+    this.destroyables = destroyables;
+  }
+  LinkingResult.prototype.destroy = function () {
+    if (lib.isArray(this.destroyables)) {
+      lib.arryDestroyAll(this.destroyables);
+    }
+    this.destroyables = null;
+  };
 
   // producers
   function produceEvent2PropertyLink (eb, desc) {
-    var pes = parsedEventString(eb, desc, '!', ':'), name;
+    var pes = parsedEventString(eb, desc, '!', ':'), fh, ehctor, eh;
     if (pes) {
-      addLink(eb, desc.name, pes.s.attachListener(pes.sr, pes.t.set.bind(pes.t, pes.tr)), pes);
+      ehctor = applinkinglib.EventEmitterHandlingRegistry.resolve({emitter:pes.s, name:pes.sr});
+      if (ehctor) {
+        eh = new ehctor(pes.s, pes.sr);
+        fh = new FilterHandler(desc.filter, pes.t.set.bind(pes.t, pes.tr));
+        addLink(eb, desc.name, new LinkingResult([eh.listenToEvent(fh.processInput.bind(fh)), eh, fh]), pes);
+      }
     }
   }
   function produceProperty2PropertyLink (eb, desc) {
-    var pes = parsedEventString(eb, desc, ':', ':'), name;
+    var pes = parsedEventString(eb, desc, ':', ':'), fh;
     if (pes) {
-      addLink(eb, desc.name, pes.s.attachListener(pes.sr, pes.t.set.bind(pes.t, pes.tr)), pes);
+      fh = new FilterHandler(desc.filter, pes.t.set.bind(pes.t, pes.tr));
+      addLink(eb, desc.name, new LinkingResult([pes.s.attachListener(pes.sr, fh.processInput.bind(fh))]), pes);
     }
   }
   // producers end

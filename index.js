@@ -1,9 +1,13 @@
 function createAppLinkingLib (execlib) {
   'use strict';
 
-  var produceLink = require('./producercreator')(execlib);
+  var ret = {
+    AppLinkingRegistryBase: require('./registrycreator')(execlib)
+  };
+  ret.EventEmitterHandlingRegistry = require('./eventemitterhandlingcreator')(execlib, ret);
+  ret.produceLink = require('./producercreator')(execlib, ret);
 
-  return produceLink;
+  return ret;
 }
 
 module.exports = createAppLinkingLib;
