@@ -1,0 +1,21 @@
+{
+  "name": "allex_applinkinglib",
+  "version": "1.0.0",
+  "description": "AllexJS lib for App linking",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.hers.rs:allex_libs/applinking.git"
+  },
+  "keywords": [
+    "ecosystem:AllexJS",
+    "app",
+    "linking",
+    "lib"
+  ],
+  "author": "HERS Belgrade",
+  "license": "ISC"
+}
