@@ -67,7 +67,7 @@ function createProduceLink (execlib, applinkinglib) {
   function produceEvent2PropertyLink (eb, desc) {
     var pes = parsedEventString(eb, desc, '!', ':'), fh, ehctor, eh;
     if (pes) {
-      ehctor = applinkinglib.EventEmitterHandlingRegistry.resolve({emitter:pes.s, name:pes.sr});
+      ehctor = applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pes.s, name:pes.sr});
       if (ehctor) {
         eh = new ehctor(pes.s, pes.sr);
         fh = new FilterHandler(desc.filter, pes.t.set.bind(pes.t, pes.tr));
@@ -83,7 +83,7 @@ function createProduceLink (execlib, applinkinglib) {
         console.error(pes.tr, 'is not a method of', pes.t);
         return;
       }
-      ehctor = applinkinglib.EventEmitterHandlingRegistry.resolve({emitter:pes.s, name:pes.sr});
+      ehctor = applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pes.s, name:pes.sr});
       if (ehctor) {
         eh = new ehctor(pes.s, pes.sr);
         fh = new FilterHandler(desc.filter, func.bind(pes.t));
