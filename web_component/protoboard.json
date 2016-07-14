@@ -1,0 +1,13 @@
+{
+  "browserify" : {
+    "dist/browserified.js":"../browserify.js"
+  },
+  "exclude": {
+    "jshint": [
+      "browserified.js"
+    ]
+  },
+  "protoboard": {
+    "role":"web_component"
+  }
+}
