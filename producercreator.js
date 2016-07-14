@@ -21,7 +21,7 @@ function createProduceLink (execlib, applinkinglib) {
 
   //parsers
   function instanceFromString (eb, str) {
-    return str === '.' ? eb : eb.elements.get(str);
+    return str === '.' ? eb : eb.getElement(str);
   }
   function parsedEventString(eb, desc, sourcedelim, targetdelim) {
     var sa = desc.source.split(sourcedelim),
