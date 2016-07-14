@@ -117,7 +117,14 @@ function createProduceLink (execlib, applinkinglib) {
     }
   }
 
-  return produceLink;
+  function produceLinks (eb, links) {
+    if (lib.isArray(links)) {
+      links.forEach(produceLink.bind(null, eb));
+      eb = null;
+    }
+  }
+
+  return produceLinks;
 }
 
 module.exports = createProduceLink;

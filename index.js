@@ -5,7 +5,7 @@ function createAppLinkingLib (execlib) {
     AppLinkingRegistryBase: require('./registrycreator')(execlib)
   };
   ret.EventEmitterHandlingRegistry = require('./eventemitterhandlingcreator')(execlib, ret);
-  ret.produceLink = require('./producercreator')(execlib, ret);
+  ret.produceLinks = require('./producercreator')(execlib, ret);
 
   return ret;
 }
