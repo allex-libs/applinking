@@ -146,6 +146,7 @@ function createAppLinkingLib (execlib) {
     AppLinkingRegistryBase: require('./registrycreator')(execlib)
   };
   ret.eventEmitterHandlingRegistry = require('./eventemitterhandlingcreator')(execlib, ret);
+  ret.propertyTargetHandlingRegistry = require('./propertytargethandlingcreator')(execlib, ret);
   ret.produceLinks = require('./producercreator')(execlib, ret);
 
   return ret;
@@ -153,7 +154,7 @@ function createAppLinkingLib (execlib) {
 
 module.exports = createAppLinkingLib;
 
-},{"./eventemitterhandlingcreator":2,"./producercreator":5,"./registrycreator":6}],5:[function(require,module,exports){
+},{"./eventemitterhandlingcreator":2,"./producercreator":5,"./propertytargethandlingcreator":6,"./registrycreator":7}],5:[function(require,module,exports){
 function createProduceLink (execlib, applinkinglib) {
   'use strict';
 
@@ -248,15 +249,27 @@ function createProduceLink (execlib, applinkinglib) {
     }
   }
   function produceProperty2PropertyLink (eb, desc) {
-    var pes = parsedEventString(eb, desc, ':', ':'), fh;
+    var pes = parsedEventString(eb, desc, ':', ':'), fh, phctor, ph, pc;
     if (pes) {
-      fh = new FilterHandler(desc.filter, pes.t.set.bind(pes.t, pes.tr));
-      addLink(eb, desc.name, new LinkingResult([pes.s.attachListener(pes.sr, fh.processInput.bind(fh))]), pes);
+      phctor = applinkinglib.propertyTargetHandlingRegistry.resolve({carrier: pes.t, name: pes.tr});
+      if (!phctor) {
+        return;
+      }
+      ph = new phctor(pes.t, pes.tr);
+      fh = new FilterHandler(desc.filter, ph.handle.bind(ph));
+      pc = pes.s.attachListener.length;
+      if (pc === 2) {
+        addLink(eb, desc.name, new LinkingResult([pes.s.attachListener(pes.sr, fh.processInput.bind(fh)), fh, ph]), pes);
+        return;
+      }
+      if (pc ===3) {
+        addLink(eb, desc.name, new LinkingResult([pes.s.attachListener('changed', pes.sr, fh.processInput.bind(fh)), fh, ph]), pes);
+      }
     }
   }
   // producers end
 
-  // adders (problematic part) 
+  // adders
   function addLink(be, name, l, pes) {
     be.addAppLink(name, l, pes);
   }
@@ -313,6 +326,68 @@ function createProduceLink (execlib, applinkinglib) {
 module.exports = createProduceLink;
 
 },{"./filterhandlercreator":3}],6:[function(require,module,exports){
+function createPropertyTargetHandler (execlib, applinkinglib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    AppLinkingRegistryBase = applinkinglib.AppLinkingRegistryBase;
+
+  function findFinalCarrier (pth) {
+    var pa = pth.name.split('.'), i=1;
+    while(i<pa.length) {
+      pth.carrier = pth.carrier[pa[i-1]];
+      pth.name = pa[i];
+      i++;
+    }
+  }
+
+
+  function PropertyTargetHandler (propertycarrier, propertyname) {
+    this.carrier = propertycarrier;
+    this.name = propertyname;
+  }
+  PropertyTargetHandler.prototype.destroy = function () {
+    this.name = null;
+    this.carrier = null;
+  };
+  PropertyTargetHandler.prototype.handle = function (val) {
+    throw new lib.Error('NOT_IMPLEMENTED', 'handle is not implemented on PropertyTargetHandler base');
+  };
+  PropertyTargetHandler.findFinalCarrier = findFinalCarrier;
+
+  function AllexPropertyTargetHandler (propertycarrier, propertyname) {
+    PropertyTargetHandler.call(this, propertycarrier, propertyname);
+    this.carrier = this.carrier.set.bind(this.carrier, this.name);
+  }
+  lib.inherit(AllexPropertyTargetHandler, PropertyTargetHandler);
+  AllexPropertyTargetHandler.prototype.handle = function (val) {
+    this.carrier(val);
+  };
+  AllexPropertyTargetHandler.recognizer = function (propertycarrierwithname) {
+    if (propertycarrierwithname &&
+      propertycarrierwithname.carrier &&
+      isAllexPropertyCarrier(propertycarrierwithname.carrier)) {
+      return AllexPropertyTargetHandler;
+    }
+  };
+
+  function isAllexPropertyCarrier(carrier) {
+    return carrier && 
+      lib.isFunction(carrier.set) &&
+      ( carrier.set === lib.Settable.prototype.set ||
+        carrier.set === lib.Changeable.prototype.set );
+  }
+
+  var ret = new AppLinkingRegistryBase();
+  ret.PropertyTargetHandler = PropertyTargetHandler;
+  ret.register(AllexPropertyTargetHandler.recognizer);
+
+  return ret;
+}
+
+module.exports = createPropertyTargetHandler;
+
+},{}],7:[function(require,module,exports){
 function createRegistry (execlib) {
   'use strict';
 
