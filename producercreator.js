@@ -5,20 +5,29 @@ function createProduceLink (execlib, applinkinglib) {
     FilterHandler = require('./filterhandlercreator')(execlib);
 
   // checkers
+  function isEvent(subdesc) {
+    return lib.isString(subdesc) && subdesc.indexOf('!') > 0;
+  }
+  function isProperty(subdesc) {
+    return lib.isString(subdesc) && subdesc.indexOf(':') > 0;
+  }
+  function isFunction(subdesc) {
+    return lib.isString(subdesc) && subdesc.indexOf('>') > 0;
+  }
   function isEventSource(desc) {
-    return desc && desc.source && desc.source.indexOf('!') > 0;
+    return desc && isEvent(desc.source);
   }
   function isPropertySource(desc) {
-    return desc && desc.source && desc.source.indexOf(':') > 0;
+    return desc && isProperty(desc.source);
   }
   function isEventTarget(desc) {
-    return desc && desc.target && desc.target.indexOf('!') > 0;
+    return desc && isEvent(desc.target);
   }
   function isPropertyTarget(desc) {
-    return desc && desc.target && desc.target.indexOf(':') > 0;
+    return desc && isProperty(desc.target);
   }
   function isFunctionTarget(desc) {
-    return desc && desc.target && desc.target.indexOf('>') > 0;
+    return desc && isFunction(desc.target);
   }
   // checkers end
 
