@@ -101,7 +101,7 @@ function createProduceLink (execlib, applinkinglib) {
     }
   }
   function produceProperty2PropertyLink (eb, desc) {
-    var pes = parsedEventString(eb, desc, ':', ':'), fh, phctor, ph;
+    var pes = parsedEventString(eb, desc, ':', ':'), fh, phctor, ph, pc;
     if (pes) {
       phctor = applinkinglib.propertyTargetHandlingRegistry.resolve({carrier: pes.t, name: pes.tr});
       if (!phctor) {
@@ -109,7 +109,14 @@ function createProduceLink (execlib, applinkinglib) {
       }
       ph = new phctor(pes.t, pes.tr);
       fh = new FilterHandler(desc.filter, ph.handle.bind(ph));
-      addLink(eb, desc.name, new LinkingResult([pes.s.attachListener(pes.sr, fh.processInput.bind(fh)), fh, ph]), pes);
+      pc = pes.s.attachListener.length;
+      if (pc === 2) {
+        addLink(eb, desc.name, new LinkingResult([pes.s.attachListener(pes.sr, fh.processInput.bind(fh)), fh, ph]), pes);
+        return;
+      }
+      if (pc ===3) {
+        addLink(eb, desc.name, new LinkingResult([pes.s.attachListener('changed', pes.sr, fh.processInput.bind(fh)), fh, ph]), pes);
+      }
     }
   }
   // producers end
