@@ -138,6 +138,30 @@ function createProduceLink (execlib, applinkinglib) {
       pes.then(doProduceProperty2PropertyLink.bind(null, eb, desc));
     }
   }
+  function doProduceProperty2FunctionLink (eb, desc, pes) {
+    var fh, func, pc;
+    func = pes.t[pes.tr];
+    if (!lib.isFunction(func)) {
+      console.error(pes.tr, 'is not a method of', pes.t);
+      return;
+    }
+    func = func.bind(pes.t);
+    fh = new FilterHandler(desc.filter, func.bind(pes.t));
+    pc = pes.s.attachListener.length;
+    if (pc === 2) {
+      addLink(eb, desc.name, new LinkingResult([pes.s.attachListener(pes.sr, func), fh]), pes);
+      return;
+    }
+    if (pc ===3) {
+      addLink(eb, desc.name, new LinkingResult([pes.s.attachListener('changed', pes.sr, func, fh)]), pes);
+    }
+  }
+  function produceProperty2FunctionLink (eb, desc) {
+    var pes = parsedEventString(eb, desc, ':', '>');
+    if (pes) {
+      pes.then(doProduceProperty2FunctionLink.bind(null, eb, desc));
+    }
+  }
   // producers end
 
   // adders
