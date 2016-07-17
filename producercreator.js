@@ -102,7 +102,7 @@ function createProduceLink (execlib, applinkinglib) {
   }
 
   function combineSources(sources) {
-    var lm, la, ret;
+    var lm, la, retobj, ret;
     console.log('should combineSources', sources.length, sources);
     if (sources.length ===1) {
       return sources[0];
@@ -113,8 +113,11 @@ function createProduceLink (execlib, applinkinglib) {
       s[0](lm.replace.bind(lm, ret));
       return ret;
     });
-    ret = lm.spread.bind(lm, la, true);
-    return [ret, lm];
+    retobj = Object.create({
+      destroy: function () {if (lm) {lm.destroy();} lm = null; la = null},
+      attach: function (cb) {lm.spread(la, cb, true);}
+    });
+    return [retobj.attach, retobj];
   }
 
   function produceSourceComposite(eb, sourcedesc) {
