@@ -103,7 +103,6 @@ function createProduceLink (execlib, applinkinglib) {
 
   function combineSources(sources) {
     var lm, la, retobj, ret;
-    console.log('should combineSources', sources.length, sources);
     if (sources.length ===1) {
       return sources[0];
     }
