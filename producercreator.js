@@ -57,7 +57,6 @@ function createProduceLink (execlib, applinkinglib) {
     ehctor = applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pe.instance, name:pe.reference});
     if (ehctor) {
       eh = new ehctor(pe.instance, pe.reference);
-      eh.listenToEvent(console.log.bind(console, 'event caught'));
       return q([eh.listenToEvent.bind(eh), eh]);
     } else {
       return q.reject(new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter not recognized by eventEmitterHandlingRegistry'));
