@@ -35,6 +35,7 @@ function createProduceLink (execlib, applinkinglib) {
           return ret;
         });
       }
+      return q(null);
     } else {
       return q.reject(new lib.Error('INVALID_LINK_ELEMENT_STRING', 'Invalid link element string: '+desc));
     }
