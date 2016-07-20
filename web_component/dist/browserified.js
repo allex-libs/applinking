@@ -337,6 +337,8 @@ function createProduceLink (execlib, applinkinglib) {
         onFunctionTarget.bind(null, eb, name, filter, source)
       );
     }
+
+    console.error(targetdesc+' could not be recognized as a target descriptor');
     return q.reject(new lib.Error('TARGET_DESCRIPTOR_NOT_RECOGNIZED', targetdesc+' could not be recognized as a target descriptor'));
   }
 
