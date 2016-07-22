@@ -179,9 +179,9 @@ function createProduceLink (execlib, applinkinglib) {
   };
   FunctionWaiter.prototype.activate = function (cb) {
     if (!(arguments.length>1 && lib.isArray(arguments[1]))) {
-      console.trace();
-      console.warn('suppressing Function/Command call');
-      return;
+      console.log(Array.prototype.slice.call(arguments, 1));
+      console.warn('should be suppressing Function/Command call');
+      //return;
     } 
     var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
     if (res && lib.isFunction(res.then)) {
