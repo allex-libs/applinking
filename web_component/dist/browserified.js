@@ -178,11 +178,6 @@ function createProduceLink (execlib, applinkinglib) {
     ChangeableListenable.prototype.destroy.call(this);
   };
   FunctionWaiter.prototype.activate = function (cb) {
-    if (!(arguments.length>1 && lib.isArray(arguments[1]))) {
-      console.log(Array.prototype.slice.call(arguments, 1));
-      console.warn('should be suppressing Function/Command call');
-      //return;
-    } 
     var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
     if (res && lib.isFunction(res.then)) {
       this.set('data', lib.extend({}, this.data, {running: true}));
@@ -508,8 +503,6 @@ function createProduceLink (execlib, applinkinglib) {
   function produceSingleLogic (eb, desc, triggers) {
     produceReferenceComposite(eb, desc.references.trim()).then(
       produceSourceCompositeForLogic.bind(null, eb, desc.name, triggers.trim(), desc.handler)
-    ).then(
-      console.log.bind(console, 'logic')
     );
     eb = null;
   }

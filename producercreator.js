@@ -346,8 +346,6 @@ function createProduceLink (execlib, applinkinglib) {
   function produceSingleLogic (eb, desc, triggers) {
     produceReferenceComposite(eb, desc.references.trim()).then(
       produceSourceCompositeForLogic.bind(null, eb, desc.name, triggers.trim(), desc.handler)
-    ).then(
-      console.log.bind(console, 'logic')
     );
     eb = null;
   }
