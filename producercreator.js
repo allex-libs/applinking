@@ -102,7 +102,7 @@ function createProduceLink (execlib, applinkinglib) {
   // producers
   function produceEventSource(pe) {
     var ehctor, eh;
-    ehctor = applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pe.instance, name:pe.reference});
+    ehctor = pe && applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pe.instance, name:pe.reference});
     if (ehctor) {
       eh = new ehctor(pe.instance, pe.reference);
       return q([eh.listenToEvent.bind(eh), eh]);
@@ -133,6 +133,14 @@ function createProduceLink (execlib, applinkinglib) {
     return producePropertySource({instance: fw, reference: 'data'});
   }
 
+  function parseChecker (eb, sourcedesc, caption, pe) {
+    if (!pe) {
+      console.error(sourcedesc, 'did not yield a', caption, 'on', eb.holder);
+      return q.reject('UNRECOGNIZABLE_PARSE', sourcedesc+' did not yield a '+caption);
+    }
+    return pe;
+  }
+
   function produceSource (eb, sourcedesc) {
     if (!sourcedesc) {
       return q.reject(new lib.Error('INVALID_SOURCE_DESCRIPTOR', sourcedesc+' is an invalid particular source descriptor'));
@@ -140,16 +148,22 @@ function createProduceLink (execlib, applinkinglib) {
     sourcedesc = sourcedesc.trim();
     if (isEvent(sourcedesc)) {
       return parseEventElementString(eb, sourcedesc, '!').then(
+        parseChecker.bind(null, eb, sourcedesc, 'EventEmitter')
+      ).then(
         produceEventSource
       );
     }
     if (isProperty(sourcedesc)) {
       return parseEventElementString(eb, sourcedesc, ':').then(
+        parseChecker.bind(null, eb, sourcedesc, 'PropertySource')
+      ).then(
         producePropertySource
       );
     }
     if (isFunction(sourcedesc)) {
       return parseEventElementString(eb, sourcedesc, '>').then(
+        parseChecker.bind(null, eb, sourcedesc, 'FunctionSource')
+      ).then(
         produceFunctionSource.bind(null, eb)
       );
     }
@@ -276,6 +290,7 @@ function createProduceLink (execlib, applinkinglib) {
 
   function produceReference (eb, refdesc) {
     var ret = [ident];
+    refdesc = refdesc.trim();
     if (isFunction(refdesc)) {
       return parseEventElementString(eb, refdesc, '>').then(
         //produceFunctionSource.bind (null, eb)
@@ -286,7 +301,6 @@ function createProduceLink (execlib, applinkinglib) {
         return _ret;
       });
     }
-    refdesc = refdesc.trim();
     if (refdesc === '.') {
       return q(eb.holder);
     }
