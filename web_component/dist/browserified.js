@@ -200,7 +200,9 @@ function createProduceLink (execlib, applinkinglib) {
   };
   FunctionWaiter.prototype.setProgress = function (progress) {
     //console.log('progress', progress, '=>', lib.extend({}, this.data, {progress: progress}));
-    this.set('data', lib.extend({}, this.data, {progress: progress}));
+    var d = lib.extend({}, this.data);
+    d.progress = progress;
+    this.set('data', d);
   };
 
   function functionWaiterFinder(findobj, fw) {
@@ -360,27 +362,25 @@ function createProduceLink (execlib, applinkinglib) {
 
 
   function onEventTarget(eb, name, filter, source, pe) {
-    return pe;
+    return [pe];
   }
   function onPropertyTarget(eb, name, filter, source, pe) {
-    var fh, phctor, ph;
+    var fh, phctor, ph, s;
     phctor = applinkinglib.propertyTargetHandlingRegistry.resolve({carrier: pe.instance, name: pe.reference});
     if (phctor) {
       ph = new phctor(pe.instance, pe.reference);
       fh = new FilterHandler(filter, ph.handle.bind(ph));
-      source[0] = source[0](fh.processInput.bind(fh));
-      source.push(ph);
-      source.push(fh);
-      addLink(eb, name, new LinkingResult(source));
+      s = [source[0](fh.processInput.bind(fh)), ph, fh];
+      addLink(eb, name, new LinkingResult(s));
     }
-    return pe;
+    return [pe, s];
   }
   function onFunctionTarget(eb, name, filter, source, pe) {
     if (!(pe && pe.instance && pe.reference)) {
       console.log('invalid function target pack', pe);
       return null;
     }
-    var func = pe.instance[pe.reference], fh, fw;
+    var func = pe.instance[pe.reference], fh, fw, s;
     if (!lib.isFunction(func)) {
       if (lib.isFunction(pe.instance.getMethodByName)) {
         func = pe.instance.getMethodByName(pe.reference);
@@ -392,12 +392,20 @@ function createProduceLink (execlib, applinkinglib) {
     }
     fw = eb.findOrCreateFunctionWaiter(pe);
     fh = new FilterHandler(filter, fw.activate.bind(fw, func.bind(pe.instance)));
-    source[0] = source[0](fh.processInput.bind(fh));
-    source.push(fh);
-    addLink(eb, name, new LinkingResult(source));
-    return pe;
+    s = [source[0](fh.processInput.bind(fh)), fh];
+    addLink(eb, name, new LinkingResult(s));
+    return [pe, s];
+  }
+  function produceTargetSingle(eb, name, filter, source, targetdesc) {
+    return produceTarget(eb, name, filter, targetdesc, source);
   }
   function produceTarget(eb, name, filter, targetdesc, source) {
+    var targetdescs;
+    targetdesc = targetdesc.trim();
+    targetdescs = targetdesc.split(',');
+    if (targetdescs.length>1) {
+      return q.all(targetdescs.map(produceTargetSingle.bind(null, eb, name, filter, source)));
+    }
     if (isEvent(targetdesc)) {
       return parseEventElementString(eb, targetdesc, '!').then(
         onEventTarget.bind(null, eb, name, filter, source)
@@ -452,10 +460,13 @@ function createProduceLink (execlib, applinkinglib) {
       return parseEventElementString(eb, refdesc, '>').then(
         //produceFunctionSource.bind (null, eb)
         onFunctionTarget.bind(null, eb, refdesc.name, null, ret)
-      ).then(function () {
+      ).then(function (result) {
+        /*
         var _ret = ret[0];
         ret = null;
         return _ret;
+        */
+        return result[1][0];
       });
     }
     if (refdesc === '.') {
