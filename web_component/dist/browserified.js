@@ -180,7 +180,7 @@ function createProduceLink (execlib, applinkinglib) {
   FunctionWaiter.prototype.activate = function (cb) {
     var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
     if (res && lib.isFunction(res.then)) {
-      this.set('data', lib.extend({}, this.data, {running: true}));
+      this.set('data', lib.extend({result: null, progress: null, error: null, running: true}));
       res.then(
         this.setResult.bind(this),
         this.setError.bind(this),
