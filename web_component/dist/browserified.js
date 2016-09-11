@@ -372,6 +372,9 @@ function createProduceLink (execlib, applinkinglib) {
       fh = new FilterHandler(filter, ph.handle.bind(ph));
       s = [source[0](fh.processInput.bind(fh)), ph, fh];
       addLink(eb, name, new LinkingResult(s));
+    } else {
+      console.error('No phctor for', pe);
+      throw new Error ('No phctor');
     }
     return [pe, s];
   }
