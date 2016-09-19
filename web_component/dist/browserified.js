@@ -380,8 +380,8 @@ function createProduceLink (execlib, applinkinglib) {
   }
   function onFunctionTarget(eb, name, filter, source, pe) {
     if (!(pe && pe.instance && pe.reference)) {
-      console.log('invalid function target pack', pe);
-      return null;
+      console.error('invalid function target pack', pe);
+      return q.reject(new lib.JSONizingError('INVALID_FUNCTION_TARGET_PACK', pe, 'No instance or reference'));
     }
     var func = pe.instance[pe.reference], fh, fw, s;
     if (!lib.isFunction(func)) {
@@ -391,13 +391,13 @@ function createProduceLink (execlib, applinkinglib) {
     }
     if (!lib.isFunction(func)) {
       console.error(pe.reference, 'is not a method of', pe.instance);
-      return null;
+      return q.reject(new lib.JSONizingError('INVALID_REFERENCE_TO_METHOD', pe, 'Reference does is not a method name'));
     }
     fw = eb.findOrCreateFunctionWaiter(pe);
     fh = new FilterHandler(filter, fw.activate.bind(fw, func.bind(pe.instance)));
     s = [source[0](fh.processInput.bind(fh)), fh];
     addLink(eb, name, new LinkingResult(s));
-    return [pe, s];
+    return q([pe, s]);
   }
   function produceTargetSingle(eb, name, filter, source, targetdesc) {
     return produceTarget(eb, name, filter, targetdesc, source);
@@ -509,6 +509,16 @@ function createProduceLink (execlib, applinkinglib) {
     );
   }
 
+  function trimmer(thingy) {
+    return thingy.trim();
+  }
+  function produceSourceCompositeForMultiLogic (eb, desc, references) {
+    var triggers = desc.triggers.map(trimmer);
+    q.all(triggers.map(produceSource.bind(null, eb))).then(combineSources).then(
+      produceLogicFinally.bind(null, eb, desc.name, desc.handler, references)
+    );
+  }
+
   function produceLogic (eb, desc) {
     if (!desc) {
       throw new lib.Error('NO_LOGIC_DESCRIPTOR', 'No link descriptor');
@@ -523,16 +533,24 @@ function createProduceLink (execlib, applinkinglib) {
       throw new lib.JSONizingError('NO_HANDLER_IN_LOGIC_DESCRIPTOR', desc, 'No handler function in');
     }
     if (lib.isArray(desc.triggers)) {
-      desc.triggers.forEach(produceSingleLogic.bind(null, eb, desc));
+      produceMultiLogic(eb, desc);
     } else {
       produceSingleLogic(eb, desc, desc.triggers);
     }
   }
   function produceSingleLogic (eb, desc, triggers) {
-    produceReferenceComposite(eb, desc.references.trim()).then(
+    var ret = produceReferenceComposite(eb, desc.references.trim()).then(
       produceSourceCompositeForLogic.bind(null, eb, desc.name, triggers.trim(), desc.handler)
     );
     eb = null;
+    return ret;
+  }
+  function produceMultiLogic (eb, desc) {
+    var ret = produceReferenceComposite(eb, desc.references.trim()).then(
+      produceSourceCompositeForMultiLogic.bind(null, eb, desc)
+    );
+    eb = null;
+    return ret;
   }
 
   function produceLogics (eb, links) {
