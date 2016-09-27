@@ -533,9 +533,11 @@ function createProduceLink (execlib, applinkinglib) {
       throw new lib.JSONizingError('NO_HANDLER_IN_LOGIC_DESCRIPTOR', desc, 'No handler function in');
     }
     if (lib.isArray(desc.triggers)) {
-      produceMultiLogic(eb, desc);
+      desc.triggers.forEach(produceSingleLogic.bind(null, eb, desc));
     } else {
-      produceSingleLogic(eb, desc, desc.triggers);
+      //produceSingleLogic(eb, desc, desc.triggers);
+      desc.triggers = desc.triggers.split(',');
+      produceMultiLogic(eb, desc);
     }
   }
   function produceSingleLogic (eb, desc, triggers) {
