@@ -20,9 +20,8 @@ function createProduceLink (execlib, applinkinglib) {
     this.data = null;
     ChangeableListenable.prototype.destroy.call(this);
   };
-  FunctionWaiter.prototype.activate = function (cb, args) {
-    //var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
-    var res = cb.apply(null, lib.isArray(args) ? args : [args]);
+  FunctionWaiter.prototype.activate = function (cb) {
+    var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
     if (res && lib.isFunction(res.then)) {
       this.set('data', lib.extend({result: null, progress: null, error: null, running: true}));
       res.then(
@@ -48,6 +47,11 @@ function createProduceLink (execlib, applinkinglib) {
     d.progress = progress;
     this.set('data', d);
   };
+
+  function TargetFunctionWaiter (instance, methodname) {
+    FunctionWaiter.call(this, instance, methodname);
+  }
+  lib.inherit(TargetFunctionWaiter, FunctionWaiter);
 
   function functionWaiterFinder(findobj, fw) {
     if (findobj.instance === fw.instance && findobj.methodname === fw.methodname) {
@@ -223,11 +227,16 @@ function createProduceLink (execlib, applinkinglib) {
     return [pe, s];
   }
   function onFunctionTarget(eb, name, filter, source, pe) {
+    var func, fh, fw, s, applytype;
     if (!(pe && pe.instance && pe.reference)) {
       console.error('invalid function target pack', pe);
       return q.reject(new lib.JSONizingError('INVALID_FUNCTION_TARGET_PACK', pe, 'No instance or reference'));
     }
-    var func = pe.instance[pe.reference], fh, fw, s;
+    if (pe.reference[0]=='+') {
+      pe.reference = pe.reference.slice(1);
+      applytype = true;
+    }
+    func = pe.instance[pe.reference];
     if (!lib.isFunction(func)) {
       if (lib.isFunction(pe.instance.getMethodByName)) {
         func = pe.instance.getMethodByName(pe.reference);
@@ -238,7 +247,7 @@ function createProduceLink (execlib, applinkinglib) {
       return q.reject(new lib.JSONizingError('INVALID_REFERENCE_TO_METHOD', pe, 'Reference does is not a method name'));
     }
     fw = eb.findOrCreateFunctionWaiter(pe);
-    fh = new FilterHandler(filter, fw.activate.bind(fw, func.bind(pe.instance)));
+    fh = new FilterHandler(filter, fw.activate.bind(fw, func.bind(pe.instance)), applytype);
     s = [source[0](fh.processInput.bind(fh)), fh];
     addLink(eb, name, new LinkingResult(s));
     return q([pe, s]);
