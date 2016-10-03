@@ -177,8 +177,9 @@ function createProduceLink (execlib, applinkinglib) {
     this.data = null;
     ChangeableListenable.prototype.destroy.call(this);
   };
-  FunctionWaiter.prototype.activate = function (cb) {
-    var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
+  FunctionWaiter.prototype.activate = function (cb, args) {
+    //var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
+    var res = cb.apply(null, lib.isArray(args) ? args : [args]);
     if (res && lib.isFunction(res.then)) {
       this.set('data', lib.extend({result: null, progress: null, error: null, running: true}));
       res.then(
