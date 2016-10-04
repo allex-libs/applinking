@@ -29,9 +29,10 @@ function createProduceLink (execlib, applinkinglib) {
         this.setError.bind(this),
         this.setProgress.bind(this)
       );
-      return;
+      return res;
     }
     this.set('data', res);
+    return res;
   };
   FunctionWaiter.prototype.setResult = function (result) {
     //console.log('result', result);

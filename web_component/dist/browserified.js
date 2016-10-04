@@ -129,16 +129,19 @@ function createFilterHandler (execlib) {
         intermediate.then(this.applyToCb.bind(this));
         return;
       }
-      this.applyToCb(intermediate);
-      return;
+      return this.applyToCb(intermediate);
     }
-    this.cb.apply(null, arguments);
+    if (this.applytype) {
+      return this.cb.apply(null, arguments[0]);
+    } else {
+      return this.cb.apply(null, arguments);
+    }
   };
   FilterHandler.prototype.applyToCb = function (arg) {
     if (this.applytype) {
-      this.cb.apply(null, arg);
+      return this.cb.apply(null, arg);
     } else {
-      this.cb(arg);
+      return this.cb(arg);
     }
   };
 
@@ -195,9 +198,10 @@ function createProduceLink (execlib, applinkinglib) {
         this.setError.bind(this),
         this.setProgress.bind(this)
       );
-      return;
+      return res;
     }
     this.set('data', res);
+    return res;
   };
   FunctionWaiter.prototype.setResult = function (result) {
     //console.log('result', result);
