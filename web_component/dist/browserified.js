@@ -397,6 +397,7 @@ function createProduceLink (execlib, applinkinglib) {
     return [pe, s];
   }
   function onFunctionTarget(eb, name, filter, source, pe) {
+    console.log('i? ko ispada?', pe.reference);
     var func, fh, fw, s, applytype;
     if (!(pe && pe.instance && pe.reference)) {
       console.error('invalid function target pack', pe);
@@ -462,17 +463,22 @@ function createProduceLink (execlib, applinkinglib) {
     if (!desc.target) {
       throw new lib.JSONizingError('NO_TARGET_IN_LINK_DESCRIPTOR', desc, 'No target in');
     }
-    produceSourceComposite(eb, desc.source.trim()).then(
+    var ret = produceSourceComposite(eb, desc.source.trim()).then(
       produceTarget.bind(null, eb, desc.name, desc.filter, desc.target.trim())
     );
     eb = null;
+    return ret;
   }
 
   function produceLinks (eb, links) {
     if (lib.isArray(links)) {
-      links.forEach(produceLink.bind(null, eb));
+      var ret = q.all (links.map(produceLink.bind(null, eb)));
+      //links.forEach(produceLink.bind(null, eb));
       eb = null;
+      return ret;
     }
+
+    return q.resolve('ok');
   }
 
   function ident (thingy) {
@@ -527,7 +533,7 @@ function createProduceLink (execlib, applinkinglib) {
   }
 
   function produceSourceCompositeForLogic (eb, name, triggersdesc, handler, references) {
-    produceSourceComposite(eb, triggersdesc).then(
+    return produceSourceComposite(eb, triggersdesc).then(
       produceLogicFinally.bind(null, eb, name, handler, references)
     );
   }
@@ -537,7 +543,7 @@ function createProduceLink (execlib, applinkinglib) {
   }
   function produceSourceCompositeForMultiLogic (eb, desc, references) {
     var triggers = desc.triggers.map(trimmer);
-    q.all(triggers.map(produceSource.bind(null, eb))).then(combineSources).then(
+    return q.all(triggers.map(produceSource.bind(null, eb))).then(combineSources).then(
       produceLogicFinally.bind(null, eb, desc.name, desc.handler, references)
     );
   }
@@ -556,11 +562,11 @@ function createProduceLink (execlib, applinkinglib) {
       throw new lib.JSONizingError('NO_HANDLER_IN_LOGIC_DESCRIPTOR', desc, 'No handler function in');
     }
     if (lib.isArray(desc.triggers)) {
-      desc.triggers.forEach(produceSingleLogic.bind(null, eb, desc));
+      return q.all (desc.triggers.map (produceSingleLogic.bind(null, eb, desc)));
     } else {
       //produceSingleLogic(eb, desc, desc.triggers);
       desc.triggers = desc.triggers.split(',');
-      produceMultiLogic(eb, desc);
+      return produceMultiLogic(eb, desc);
     }
   }
   function produceSingleLogic (eb, desc, triggers) {
@@ -580,9 +586,11 @@ function createProduceLink (execlib, applinkinglib) {
 
   function produceLogics (eb, links) {
     if (lib.isArray(links)) {
-      links.forEach(produceLogic.bind(null, eb));
+      var ret = q.all(links.map (produceLogic.bind(null, eb)));
       eb = null;
+      return ret;
     }
+    return q.resolve('ok');
   }
 
 
@@ -599,10 +607,10 @@ function createProduceLink (execlib, applinkinglib) {
     this.holder = null;
   };
   LinkingEnvironment.prototype.produceLinks = function (links) {
-    produceLinks(this, links);
+    return produceLinks(this, links);
   };
   LinkingEnvironment.prototype.produceLogic = function (logics) {
-    produceLogics(this, logics);
+    return produceLogics(this, logics);
   };
   LinkingEnvironment.prototype.findOrCreateFunctionWaiter = function (pe) {
     var fw = this.functionWaiters.traverseConditionally(functionWaiterFinder.bind(null, {instance: pe.instance, methodname: pe.reference}));
