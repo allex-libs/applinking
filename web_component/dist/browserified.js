@@ -397,7 +397,6 @@ function createProduceLink (execlib, applinkinglib) {
     return [pe, s];
   }
   function onFunctionTarget(eb, name, filter, source, pe) {
-    console.log('i? ko ispada?', pe.reference);
     var func, fh, fw, s, applytype;
     if (!(pe && pe.instance && pe.reference)) {
       console.error('invalid function target pack', pe);
