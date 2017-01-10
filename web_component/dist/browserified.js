@@ -474,6 +474,7 @@ function createProduceLink (execlib, applinkinglib) {
       var ret = q.all (links.map(produceLink.bind(null, eb)));
       //links.forEach(produceLink.bind(null, eb));
       eb = null;
+      ret.done(null, console.error.bind(console, 'Failed due to:'));
       return ret;
     }
 
@@ -587,6 +588,7 @@ function createProduceLink (execlib, applinkinglib) {
     if (lib.isArray(links)) {
       var ret = q.all(links.map (produceLogic.bind(null, eb)));
       eb = null;
+      ret.done (null, console.error.bind(console, 'FAILED DUE TO'));
       return ret;
     }
     return q.resolve('ok');
