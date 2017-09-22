@@ -1,6 +1,6 @@
 {
   "name": "allex_applinkinglib",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AllexJS lib for App linking",
   "main": "index.js",
   "scripts": {

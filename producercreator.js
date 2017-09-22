@@ -6,6 +6,51 @@ function createProduceLink (execlib, applinkinglib) {
     ChangeableListenable = lib.ChangeableListenable,
     FilterHandler = require('./filterhandlercreator')(execlib);
 
+  function defaultErrorTranslation (error) {
+    if ('object' !== typeof error) {
+      return error;
+    }
+    if ('code' in error) {
+      return error.code + ' (' + error.message + ')'
+    }
+    if ('message' in error) {
+      return error.message;
+    }
+    return error;
+  }
+
+  function tryTranslateError (error) {
+    var langcode, lang, msg; 
+    if ('object' !== typeof error) {
+      return defaultErrorTranslation(error);
+    }
+    if (!('code' in error)) {
+      return defaultErrorTranslation(error);
+    }
+    if ('undefined' === typeof AllexWebAppSlugStorage) {
+      return defaultErrorTranslation(error);
+    }
+    if (!applinkinglib.errorMessages) {
+      return defaultErrorTranslation(error);
+    }
+    langcode = AllexWebAppSlugStorage.get('defaultLanguageCode');
+    if (!langcode) {
+      return defaultErrorTranslation(error);
+    }
+    lang = applinkinglib.errorMessages[langcode];
+    if (!lang) {
+      return defaultErrorTranslation(error);
+    }
+    msg = lang[error.code];
+    if (!msg) {
+      return defaultErrorTranslation(error);
+    }
+    if (lib.isString(msg)) {
+      return msg;
+    }
+    return defaultErrorTranslation(error);
+  }
+
   function FunctionWaiter (instance, methodname) {
     ChangeableListenable.call(this);
     this.data = {result: null, progress: null, error: null, running: false};
@@ -40,7 +85,7 @@ function createProduceLink (execlib, applinkinglib) {
   };
   FunctionWaiter.prototype.setError = function (error) {
     //console.log('error', error);
-    this.set('data', lib.extend({}, this.data, {error: error, running: false}));
+    this.set('data', lib.extend({}, this.data, {error: tryTranslateError(error), running: false}));
   };
   FunctionWaiter.prototype.setProgress = function (progress) {
     //console.log('progress', progress, '=>', lib.extend({}, this.data, {progress: progress}));
