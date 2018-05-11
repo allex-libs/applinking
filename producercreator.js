@@ -258,8 +258,11 @@ function createProduceLink (execlib, applinkinglib) {
   function onEventTarget(eb, name, filter, source, pe) {
     return [pe];
   }
-  function onPropertyTarget(eb, name, filter, source, pe) {
+  function onPropertyTarget(targetdesc, eb, name, filter, source, pe) {
     var fh, phctor, ph, s;
+    if (!pe) {
+      throw new lib.Error('INVALID_TARGET_DESCRIPTOR', targetdesc+' did not yield a property target');
+    }
     phctor = applinkinglib.propertyTargetHandlingRegistry.resolve({carrier: pe.instance, name: pe.reference});
     if (phctor) {
       ph = new phctor(pe.instance, pe.reference);
@@ -315,7 +318,7 @@ function createProduceLink (execlib, applinkinglib) {
     }
     if (isProperty(targetdesc)) {
       return parseEventElementString(eb, targetdesc, ':').then(
-        onPropertyTarget.bind(null, eb, name, filter, source)
+        onPropertyTarget.bind(null, targetdesc, eb, name, filter, source)
       );
     }
     if (isFunction(targetdesc)) {
