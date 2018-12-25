@@ -32,8 +32,13 @@ function createEventEmitterHandling (execlib, applinkinglib) {
     EventEmitterHandler.prototype.destroy.call(this);
   };
   AllexEventEmitterHandler.prototype.raiseEvent = function () {
+    /* old code, very likely incorrect
     if (this.emitter) {
       this.emitter.apply(this.emitter, Array.prototype.slice.call(arguments));
+    }
+    */
+    if (this.emitter) {
+      this.emitter.fire.apply(this.emitter, Array.prototype.slice.call(arguments));
     }
   };
   AllexEventEmitterHandler.prototype.listenToEvent = function (cb) {

@@ -28,14 +28,16 @@ function createFilterHandler (execlib) {
     }
     if (this.applytype) {
       return this.cb.apply(null, arguments[0]);
-    } else {
+    }
+    if (this.cb) {
       return this.cb.apply(null, arguments);
     }
   };
   FilterHandler.prototype.applyToCb = function (arg) {
     if (this.applytype) {
       return this.cb.apply(null, arg);
-    } else {
+    }
+    if (this.cb) {
       return this.cb(arg);
     }
   };

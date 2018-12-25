@@ -256,7 +256,20 @@ function createProduceLink (execlib, applinkinglib) {
 
 
   function onEventTarget(eb, name, filter, source, pe) {
-    return [pe];
+    var fh, ehctor, eh, s;
+    if (!pe) {
+      throw new lib.Error('INVALID_TARGET_DESCRIPTOR', targetdesc+' did not yield an event target');
+    }
+    ehctor = applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pe.instance, name:pe.reference});
+    if (ehctor) {
+      eh = new ehctor(pe.instance, pe.reference);
+      fh = new FilterHandler(filter, eh.raiseEvent.bind(eh));
+      s = [source[0](fh.processInput.bind(fh)), eh, fh];
+      addLink(eb, name, new LinkingResult(s));
+    } else {
+      return q.reject(new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter not recognized by eventEmitterHandlingRegistry'));
+    }
+    return [pe, s];
   }
   function onPropertyTarget(targetdesc, eb, name, filter, source, pe) {
     var fh, phctor, ph, s;
@@ -353,15 +366,29 @@ function createProduceLink (execlib, applinkinglib) {
       var ret = q.all (links.map(produceLink.bind(null, eb)));
       //links.forEach(produceLink.bind(null, eb));
       eb = null;
-      ret.done(null, console.error.bind(console, 'Failed due to:'));
+      ret.done(null, console.error.bind(console, 'produceLinks failed due to:'));
       return ret;
     }
 
-    return q.resolve('ok');
+    return q.resolve([]);
   }
 
   function ident (thingy) {
     return thingy;
+  }
+
+  function produceEventReference (pe) {
+    var fh, ehctor, eh, s;
+    if (!pe) {
+      throw new lib.Error('INVALID_TARGET_DESCRIPTOR', targetdesc+' did not yield an event target');
+    }
+    ehctor = applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pe.instance, name:pe.reference});
+    if (ehctor) {
+      eh = new ehctor(pe.instance, pe.reference);
+      return eh;
+    } else {
+      return q.reject(new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter not recognized by eventEmitterHandlingRegistry'));
+    }
   }
 
   function produceReference (eb, refdesc) {
@@ -383,11 +410,22 @@ function createProduceLink (execlib, applinkinglib) {
     if (refdesc === '.') {
       return q(eb.holder);
     }
+    if (isEvent(refdesc)) {
+      return parseEventElementString(eb, refdesc, '!').then(
+        parseChecker.bind(null, eb, refdesc, 'EventEmitter')
+      ).then(
+        produceEventReference
+      );
+    }
     return q(eb.holder.getElement(refdesc));
   }
 
   function produceReferenceComposite(eb, sourcedesc) {
-    var ret = q.all(sourcedesc.split(',').map(produceReference.bind(null, eb)));
+    var ret;
+    if (!sourcedesc) {
+      return q([]);
+    }
+    ret = q.all(sourcedesc.trim().split(',').map(produceReference.bind(null, eb)));
     eb = null;
     return ret;
   }
@@ -405,8 +443,10 @@ function createProduceLink (execlib, applinkinglib) {
     this.handler.apply(null, args);
   };
 
+  var logicid=0;
   function produceLogicFinally (eb, name, handler, references, triggersource) {
     var lw = new LogicWorker(handler, references);
+    lw._id = ++logicid;
     triggersource.push(lw);
     return onFunctionTarget(eb, name, void 0, triggersource, {instance: lw, reference: 'exec'});
   }
@@ -431,9 +471,11 @@ function createProduceLink (execlib, applinkinglib) {
     if (!desc) {
       throw new lib.Error('NO_LOGIC_DESCRIPTOR', 'No link descriptor');
     }
+    /*
     if (!desc.references) {
       throw new lib.JSONizingError('NO_REFERENCES_IN_LOGIC_DESCRIPTOR', desc, 'No references in');
     }
+    */
     if (!desc.triggers) {
       throw new lib.JSONizingError('NO_TRIGGERS_IN_LOGIC_DESCRIPTOR', desc, 'No triggers in');
     }
@@ -449,14 +491,14 @@ function createProduceLink (execlib, applinkinglib) {
     }
   }
   function produceSingleLogic (eb, desc, triggers) {
-    var ret = produceReferenceComposite(eb, desc.references.trim()).then(
+    var ret = produceReferenceComposite(eb, desc.references).then(
       produceSourceCompositeForLogic.bind(null, eb, desc.name, triggers.trim(), desc.handler)
     );
     eb = null;
     return ret;
   }
   function produceMultiLogic (eb, desc) {
-    var ret = produceReferenceComposite(eb, desc.references.trim()).then(
+    var ret = produceReferenceComposite(eb, desc.references).then(
       produceSourceCompositeForMultiLogic.bind(null, eb, desc)
     );
     eb = null;
@@ -467,10 +509,10 @@ function createProduceLink (execlib, applinkinglib) {
     if (lib.isArray(links)) {
       var ret = q.all(links.map (produceLogic.bind(null, eb)));
       eb = null;
-      ret.done (null, console.error.bind(console, 'FAILED DUE TO'));
+      ret.done (null, console.error.bind(console, 'produceLogics failed due to:'));
       return ret;
     }
-    return q.resolve('ok');
+    return q.resolve([]);
   }
 
 
