@@ -258,7 +258,13 @@ function createProduceLink (execlib, applinkinglib) {
   };
   FunctionWaiter.prototype.setResult = function (result) {
     //console.log('result', result);
-    this.set('data', lib.extend({}, this.data, {result: result, running: false}));
+    try {
+      this.set('data', lib.extend({}, this.data, {result: result, running: false}));
+    }
+    catch (e) {
+      console.error(e);
+      throw e;
+    }
   };
   FunctionWaiter.prototype.setError = function (error) {
     //console.log('error', error);
