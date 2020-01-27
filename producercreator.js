@@ -312,7 +312,7 @@ function createProduceLink (execlib, applinkinglib) {
     }
     if (!lib.isFunction(func)) {
       console.error(pe.reference, 'is not a method of', pe.instance);
-      return q.reject(new lib.JSONizingError('INVALID_REFERENCE_TO_METHOD', pe, 'Reference does is not a method name'));
+      return q.reject(new lib.JSONizingError('INVALID_REFERENCE_TO_METHOD', pe, 'Reference is not a method name'));
     }
     fw = eb.findOrCreateFunctionWaiter(pe);
     fh = new FilterHandler(filter, fw.activate.bind(fw, func.bind(pe.instance)), applytype);
