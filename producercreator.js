@@ -53,7 +53,7 @@ function createProduceLink (execlib, applinkinglib) {
 
   function FunctionWaiter (instance, methodname) {
     ChangeableListenable.call(this);
-    this.data = {result: null, progress: null, error: null, running: false};
+    this.data = {callerinfo: null, result: null, progress: null, error: null, running: false};
     this.instance = instance;
     this.methodname = methodname;
   }
@@ -66,9 +66,17 @@ function createProduceLink (execlib, applinkinglib) {
     ChangeableListenable.prototype.destroy.call(this);
   };
   FunctionWaiter.prototype.activate = function (cb) {
-    var res = cb.apply(null, Array.prototype.slice.call(arguments, 1));
+    var args, res, callerinfo;
+    if (arguments.length == 2 && arguments[1] && arguments[1].callerinfo && lib.isArray(arguments[1].args)) {
+      args = arguments[1].args;
+      callerinfo = arguments[1].callerinfo;
+    } else {
+      args = Array.prototype.slice.call(arguments, 1);
+      callerinfo = null;
+    }
+    res = cb.apply(null, args);
     if (res && lib.isFunction(res.then)) {
-      this.set('data', lib.extend({result: null, progress: null, error: null, running: true}));
+      this.set('data', lib.extend({callerinfo: callerinfo, result: null, progress: null, error: null, running: true}));
       res.then(
         this.setResult.bind(this),
         this.setError.bind(this),
@@ -76,7 +84,7 @@ function createProduceLink (execlib, applinkinglib) {
       );
       return res;
     }
-    this.set('data', res);
+    this.set('data', callerinfo ? {callerinfo: callerinfo, result: res} : res);
     return res;
   };
   FunctionWaiter.prototype.setResult = function (result) {
@@ -99,11 +107,6 @@ function createProduceLink (execlib, applinkinglib) {
     d.progress = progress;
     this.set('data', d);
   };
-
-  function TargetFunctionWaiter (instance, methodname) {
-    FunctionWaiter.call(this, instance, methodname);
-  }
-  lib.inherit(TargetFunctionWaiter, FunctionWaiter);
 
   function functionWaiterFinder(findobj, fw) {
     if (findobj.instance === fw.instance && findobj.methodname === fw.methodname) {
