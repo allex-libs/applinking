@@ -422,7 +422,7 @@ function createProduceLink (execlib, applinkinglib) {
     });
     retobj = Object.create({
       destroy: function () {if (lm) {lm.destroy();} lm = null; la = null},
-      attach: function (cb) {lm.spread(la, cb, true);}
+      attach: function (cb) {return lm.spread(la, cb, true);}
     });
     return [retobj.attach, retobj];
   }
