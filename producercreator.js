@@ -167,23 +167,23 @@ function createProduceLink (execlib, applinkinglib) {
     ehctor = pe && applinkinglib.eventEmitterHandlingRegistry.resolve({emitter:pe.instance, name:pe.reference});
     if (ehctor) {
       eh = new ehctor(pe.instance, pe.reference);
-      return q([eh.listenToEvent.bind(eh), eh]);
+      return [eh.listenToEvent.bind(eh), eh];
     } else {
-      return q.reject(new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter not recognized by eventEmitterHandlingRegistry'));
+      throw new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter not recognized by eventEmitterHandlingRegistry');
     }
   }
 
   function producePropertySource(pe) {
     var pc;
     if (!(pe && pe.instance && pe.instance.attachListener)) {
-      return q.reject(new lib.Error('NOT_A_PROPERTY_SOURCE', 'Found an instance that has not got a method `attachListener`'));
+      throw new lib.Error('NOT_A_PROPERTY_SOURCE', 'Found an instance that has not got a method `attachListener`');
     }
     pc = pe.instance.attachListener.length;
     if (pc === 2) {
-      return q([pe.instance.attachListener.bind(pe.instance, pe.reference), pe]);
+      return [pe.instance.attachListener.bind(pe.instance, pe.reference), pe];
     }
     if (pc ===3) {
-      return q([pe.instance.attachListener.bind(pe.instance, 'changed', pe.reference), pe]);
+      return [pe.instance.attachListener.bind(pe.instance, 'changed', pe.reference), pe];
     }
   }
 
@@ -198,7 +198,7 @@ function createProduceLink (execlib, applinkinglib) {
   function parseChecker (eb, sourcedesc, caption, pe) {
     if (!pe) {
       console.error(sourcedesc, 'did not yield a', caption, 'on', eb.holder);
-      return q.reject('UNRECOGNIZABLE_PARSE', sourcedesc+' did not yield a '+caption);
+      throw new lib.Error('UNRECOGNIZABLE_PARSE', sourcedesc+' did not yield a '+caption);
     }
     return pe;
   }
