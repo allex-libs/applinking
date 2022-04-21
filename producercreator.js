@@ -67,7 +67,7 @@ function createProduceLink (execlib, applinkinglib) {
   };
   FunctionWaiter.prototype.activate = function (cb) {
     var args, res, callerinfo;
-    if (arguments.length == 2 && arguments[1] && arguments[1].callerinfo && lib.isArray(arguments[1].args)) {
+    if (arguments.length == 2 && arguments[1] && arguments[1].hasOwnProperty && arguments[1].hasOwnProperty('callerinfo') && lib.isArray(arguments[1].args)) {
       args = arguments[1].args;
       callerinfo = arguments[1].callerinfo;
     } else {
