@@ -346,7 +346,7 @@ function createProduceLink (execlib, applinkinglib) {
       eh = new ehctor(pe.instance, pe.reference);
       return [eh.listenToEvent.bind(eh), eh];
     } else {
-      throw new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter not recognized by eventEmitterHandlingRegistry');
+      throw new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter `'+pe.reference+'` not recognized by eventEmitterHandlingRegistry');
     }
   }
 
@@ -453,7 +453,7 @@ function createProduceLink (execlib, applinkinglib) {
       s = [source[0](fh.processInput.bind(fh)), eh, fh];
       addLink(eb, name, new LinkingResult(s));
     } else {
-      return q.reject(new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter not recognized by eventEmitterHandlingRegistry'));
+      return q.reject(new lib.Error('EVENT_EMITTER_NOT_RECOGNIZED', 'EventEmitter "'+pe.reference+'" not recognized by eventEmitterHandlingRegistry'));
     }
     return [pe, s];
   }
@@ -478,7 +478,7 @@ function createProduceLink (execlib, applinkinglib) {
     var func, fh, fw, s, applytype;
     if (!(pe && pe.instance && pe.reference)) {
       console.error('invalid function target pack', pe);
-      return q.reject(new lib.JSONizingError('INVALID_FUNCTION_TARGET_PACK', pe, 'No instance or reference'));
+      throw new lib.JSONizingError('INVALID_FUNCTION_TARGET_PACK', pe, 'No instance or reference');
     }
     if (pe.reference[0]=='+') {
       pe.reference = pe.reference.slice(1);
@@ -492,13 +492,16 @@ function createProduceLink (execlib, applinkinglib) {
     }
     if (!lib.isFunction(func)) {
       console.error(pe.reference, 'is not a method of', pe.instance);
-      return q.reject(new lib.JSONizingError('INVALID_REFERENCE_TO_METHOD', pe, 'Reference is not a method name'));
+      throw new lib.Error(
+        'INVALID_REFERENCE_TO_METHOD',
+        'Reference `'+pe.reference+'` is not a method name of '+ ((pe.instance && pe.instance.constructor) ? pe.instance.constructor.name : 'Unknown instance class')
+      );
     }
     fw = eb.findOrCreateFunctionWaiter(pe);
     fh = new FilterHandler(filter, fw.activate.bind(fw, func.bind(pe.instance)), applytype);
     s = [source[0](fh.processInput.bind(fh)), fh];
     addLink(eb, name, new LinkingResult(s));
-    return q([pe, s]);
+    return [pe, s];
   }
   function produceTargetSingle(eb, name, filter, source, targetdesc) {
     return produceTarget(eb, name, filter, targetdesc, source);
@@ -626,7 +629,12 @@ function createProduceLink (execlib, applinkinglib) {
   }
   LogicWorker.prototype.exec = function () {
     var args = (this.references || []).concat(Array.prototype.slice.call(arguments));
-    this.handler.apply(null, args);
+    try {
+      this.handler.apply(null, args);
+    } catch (e) {
+      console.error('Error in handler', this.handler);
+      console.error(e);
+    }
   };
 
   var logicid=0;
@@ -684,11 +692,24 @@ function createProduceLink (execlib, applinkinglib) {
     return ret;
   }
   function produceMultiLogic (eb, desc) {
+    try {
     var ret = produceReferenceComposite(eb, desc.references).then(
       produceSourceCompositeForMultiLogic.bind(null, eb, desc)
+    ).then(
+      null,
+      produceMultiLogicFail.bind(null, desc)
     );
     eb = null;
+    desc = null;
     return ret;
+    } catch (e) {
+      return produceMultiLogicFail(desc, e);
+    }
+  }
+  function produceMultiLogicFail (desc, reason) {
+    console.error('Logic could not be produced for', desc);
+    console.error(reason);
+    throw reason;
   }
 
   function produceLogics (eb, links) {
