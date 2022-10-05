@@ -183,6 +183,14 @@ function createProduceLink (execlib, applinkinglib) {
     ChangeableListenable = lib.ChangeableListenable,
     FilterHandler = require('./filterhandlercreator')(execlib);
 
+  function errorCombiner (errcode, errcaption, sourceerr) {
+    var caption = lib.joinStringsWith(errcaption, sourceerr.message, ' \nbecause\n ');
+    return new lib.Error(errcode, caption);
+  }
+  function errorRethrower (errcode, errcaption, sourceerr) {
+    throw errorCombiner(errcode, errcaption, sourceerr);
+  }
+
   function defaultErrorTranslation (error) {
     if ('object' !== typeof error) {
       return error;
@@ -381,32 +389,39 @@ function createProduceLink (execlib, applinkinglib) {
   }
 
   function produceSource (eb, sourcedesc) {
-    if (!sourcedesc) {
+    if (!(lib.isString(sourcedesc) && sourcedesc)) {
       return q.reject(new lib.Error('INVALID_SOURCE_DESCRIPTOR', sourcedesc+' is an invalid particular source descriptor'));
     }
     sourcedesc = sourcedesc.trim();
-    if (isEvent(sourcedesc)) {
-      return parseEventElementString(eb, sourcedesc, '!').then(
-        parseChecker.bind(null, eb, sourcedesc, 'EventEmitter')
-      ).then(
-        produceEventSource
-      );
-    }
-    if (isProperty(sourcedesc)) {
-      return parseEventElementString(eb, sourcedesc, ':').then(
-        parseChecker.bind(null, eb, sourcedesc, 'PropertySource')
-      ).then(
-        producePropertySource
-      );
-    }
-    if (isFunction(sourcedesc)) {
-      return parseEventElementString(eb, sourcedesc, '>').then(
-        parseChecker.bind(null, eb, sourcedesc, 'FunctionSource')
-      ).then(
-        produceFunctionSource.bind(null, eb)
-      );
+    try {
+      if (isEvent(sourcedesc)) {
+        return parseEventElementString(eb, sourcedesc, '!').then(
+          parseChecker.bind(null, eb, sourcedesc, 'EventEmitter')
+        ).then(
+          produceEventSource
+        );
+      }
+      if (isProperty(sourcedesc)) {
+        return parseEventElementString(eb, sourcedesc, ':').then(
+          parseChecker.bind(null, eb, sourcedesc, 'PropertySource')
+        ).then(
+          producePropertySource
+        );
+      }
+      if (isFunction(sourcedesc)) {
+        return parseEventElementString(eb, sourcedesc, '>').then(
+          parseChecker.bind(null, eb, sourcedesc, 'FunctionSource')
+        ).then(
+          produceFunctionSource.bind(null, eb)
+        );
+      }
+    } catch(e) {
+      return produceSourceFailer(sourcedesc, e);
     }
     return q.reject(new lib.Error('UNRECOGNIZED_LINK_SOURCE', 'Not a recognized source descriptor: '+sourcedesc));
+  }
+  function produceSourceFailer (sourcedesc, reason) {
+    errorRethrower('SOURCE_PRODUCTION_FAILED', 'Could not produce source '+sourcedesc, reason);
   }
 
   function combineSources(sources) {
@@ -507,33 +522,45 @@ function createProduceLink (execlib, applinkinglib) {
     return produceTarget(eb, name, filter, targetdesc, source);
   }
   function produceTarget(eb, name, filter, targetdesc, source) {
-    var targetdescs;
+    var targetdescs, ret;
     targetdesc = targetdesc.trim();
     targetdescs = targetdesc.split(',');
-    if (targetdescs.length>1) {
-      return q.all(targetdescs.map(produceTargetSingle.bind(null, eb, name, filter, source)));
+    try {
+      if (targetdescs.length>1) {
+        return q.all(targetdescs.map(produceTargetSingle.bind(null, eb, name, filter, source)));
+      }
+      if (isEvent(targetdesc)) {
+        ret = parseEventElementString(eb, targetdesc, '!').then(
+          onEventTarget.bind(null, eb, name, filter, source),
+          produceTargetFailer.bind(null, targetdesc)
+        );
+        return ret;
+      }
+      if (isProperty(targetdesc)) {
+        ret = parseEventElementString(eb, targetdesc, ':').then(
+          onPropertyTarget.bind(null, targetdesc, eb, name, filter, source),
+          produceTargetFailer.bind(null, targetdesc)
+        );
+        return ret;
+      }
+      if (isFunction(targetdesc)) {
+        ret = parseEventElementString(eb, targetdesc, '>').then(
+          onFunctionTarget.bind(null, eb, name, filter, source),
+          produceTargetFailer.bind(null, targetdesc)
+        );
+        return ret;
+      }
+    } catch (e) {
+      return q.reject(errorCombiner('TARGET_PRODUCTION_FAILED', 'Could not produce target '+targetdesc, e));
     }
-    if (isEvent(targetdesc)) {
-      return parseEventElementString(eb, targetdesc, '!').then(
-        onEventTarget.bind(null, eb, name, filter, source)
-      );
-    }
-    if (isProperty(targetdesc)) {
-      return parseEventElementString(eb, targetdesc, ':').then(
-        onPropertyTarget.bind(null, targetdesc, eb, name, filter, source)
-      );
-    }
-    if (isFunction(targetdesc)) {
-      return parseEventElementString(eb, targetdesc, '>').then(
-        onFunctionTarget.bind(null, eb, name, filter, source)
-      );
-    }
-
-    console.error(targetdesc+' could not be recognized as a target descriptor');
     return q.reject(new lib.Error('TARGET_DESCRIPTOR_NOT_RECOGNIZED', targetdesc+' could not be recognized as a target descriptor'));
+  }
+  function produceTargetFailer (targetdesc, reason) {
+    errorRethrower('TARGET_PRODUCTION_FAILED', 'Could not produce target '+targetdesc, e);
   }
 
   function produceLink (eb, desc) {
+    var ret;
     if (!desc) {
       throw new lib.Error('NO_LINK_DESCRIPTOR', 'No link descriptor');
     }
@@ -543,11 +570,20 @@ function createProduceLink (execlib, applinkinglib) {
     if (!desc.target) {
       throw new lib.JSONizingError('NO_TARGET_IN_LINK_DESCRIPTOR', desc, 'No target in');
     }
-    var ret = produceSourceComposite(eb, desc.source.trim()).then(
-      produceTarget.bind(null, eb, desc.name, desc.filter, desc.target.trim())
-    );
-    eb = null;
-    return ret;
+    try {
+      ret = produceSourceComposite(eb, desc.source.trim()).then(
+        produceTarget.bind(null, eb, desc.name, desc.filter, desc.target.trim()),
+        produceLinkFailer.bind(null, desc)
+      );
+      eb = null;
+      desc = null;
+      return ret;
+    } catch (e) {
+      produceLinkFailer(desc, e);
+    }
+  }
+  function produceLinkFailer (linkdesc, reason) {
+    errorRethrower('LINK_PRODUCTION_FAILED', 'Could not produce link '+JSON.stringify(linkdesc), reason);
   }
 
   function produceLinks (eb, links) {
