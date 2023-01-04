@@ -180,6 +180,7 @@ function createProduceLink (execlib, applinkinglib) {
 
   var lib = execlib.lib,
     q = lib.q,
+    qlib = lib.qlib,
     ChangeableListenable = lib.ChangeableListenable,
     FilterHandler = require('./filterhandlercreator')(execlib);
 
@@ -236,8 +237,76 @@ function createProduceLink (execlib, applinkinglib) {
     return defaultErrorTranslation(error);
   }
 
+  function ActivatorJobCore (funcwaiter, cb, args, callerinfo) {
+    this.funcwaiter = funcwaiter;
+    this.cb = cb;
+    this.args = args;
+    this.callerinfo = callerinfo;
+    this.finalResult = void 0;
+  }
+  ActivatorJobCore.prototype.destroy = function () {
+    this.finalResult = null;
+    this.callerinfo = null;
+    this.args = null;
+    this.cb = null;
+    this.funcwaiter = null;
+  };
+  ActivatorJobCore.prototype.shouldContinue = function () {
+    if (lib.defined(this.finalResult)) {
+      return this.finalResult;
+    }
+    if(!this.funcwaiter) {
+      throw new lib.Error('NO_FUNCWAITER', this.constructor.name+' needs to have funcwaiter');
+    }
+    if (!lib.isFunction(this.cb)) {
+      throw new lib.Error('NO_CB', this.constructor.name+' needs to have cb');
+    }
+    if (!lib.isArray(this.args)) {
+      throw new lib.Error('NO_ARGS', this.constructor.name+' needs to have args');
+    }
+  };
+  
+  ActivatorJobCore.prototype.init = function () {
+    var res = this.cb.apply(null, this.args);
+    if (q.isThenable(res)) {
+      this.funcwaiter.set(
+        'data',
+        lib.defined(this.callerinfo)
+        ?
+        {callerinfo: this.callerinfo, result: null, progress: null, error: null, running: true}
+        :
+        {result: null, progress: null, error: null, running: true}
+      );
+      res.then(
+        this.funcwaiter.setResult.bind(this.funcwaiter),
+        this.funcwaiter.setError.bind(this.funcwaiter),
+        this.funcwaiter.setProgress.bind(this.funcwaiter)
+      );
+      return res;
+    }
+    this.funcwaiter.set(
+      'data', 
+      lib.defined(this.callerinfo)
+      ?
+      {callerinfo: this.callerinfo, result: res}
+      :
+      res
+    );
+    return res;
+  };
+  ActivatorJobCore.prototype.finalize = function (res) {
+    return res;
+  };
+  
+  ActivatorJobCore.prototype.steps = [
+    'init',
+    'finalize'
+  ];
+  
+
   function FunctionWaiter (instance, methodname) {
     ChangeableListenable.call(this);
+    this.jobs = new qlib.JobCollection();
     this.data = {callerinfo: null, result: null, progress: null, error: null, running: false};
     this.instance = instance;
     this.methodname = methodname;
@@ -248,29 +317,22 @@ function createProduceLink (execlib, applinkinglib) {
     this.methodname = null;
     this.instance = null;
     this.data = null;
+    if(this.jobs) {
+       this.jobs.destroy();
+    }
+    this.jobs = null;
     ChangeableListenable.prototype.destroy.call(this);
   };
   FunctionWaiter.prototype.activate = function (cb) {
     var args, res, callerinfo;
     if (arguments.length == 2 && arguments[1] && arguments[1].hasOwnProperty && arguments[1].hasOwnProperty('callerinfo') && lib.isArray(arguments[1].args)) {
       args = arguments[1].args;
-      callerinfo = arguments[1].callerinfo;
+      callerinfo = JSON.parse(JSON.stringify(arguments[1].callerinfo));
     } else {
       args = Array.prototype.slice.call(arguments, 1);
-      callerinfo = null;
+      //callerinfo = null;
     }
-    res = cb.apply(null, args);
-    if (res && lib.isFunction(res.then)) {
-      this.set('data', lib.extend({callerinfo: callerinfo, result: null, progress: null, error: null, running: true}));
-      res.then(
-        this.setResult.bind(this),
-        this.setError.bind(this),
-        this.setProgress.bind(this)
-      );
-      return res;
-    }
-    this.set('data', callerinfo ? {callerinfo: callerinfo, result: res} : res);
-    return res;
+    return this.jobs.run('.', qlib.newSteppedJobOnSteppedInstance(new ActivatorJobCore(this, cb, args, callerinfo)));
   };
   FunctionWaiter.prototype.setResult = function (result) {
     //console.log('result', result);
