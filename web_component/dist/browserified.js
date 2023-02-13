@@ -846,9 +846,30 @@ function createProduceLink (execlib, applinkinglib) {
       this.functionWaiters.push(fw);
     }
     return fw;
-  }
+  };
   LinkingEnvironment.prototype.addAppLink = function () {
   };
+  LinkingEnvironment.prototype.getPropertyValue = function (propertydescstring) {
+    var t = this, pd = propertydescstring, ret;
+    if (isProperty(pd)) {
+      ret = parseEventElementString(t, pd, ':').then(
+        parseChecker.bind(null, t, pd, 'PropertySource')
+      ).then(
+        onPropertyFound
+      );
+      t = null;
+      pd = null;
+      return ret;
+    }
+    throw new lib.Error('NOT_A_PROPERTY_DESCRIPTOR', pd+' is not a property name;');
+  };
+
+  function onPropertyFound (propfoundobj) {
+    if (!(propfoundobj && propfoundobj.instance && lib.isString(propfoundobj.reference))) {
+      return null;
+    }
+    return propfoundobj.instance.get(propfoundobj.reference);
+  }
 
 
   return LinkingEnvironment;
